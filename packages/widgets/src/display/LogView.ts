@@ -52,6 +52,7 @@ export class LogView extends Widget {
 
     scrollUp(n = 1): void {
         this._scrollOffset = Math.max(0, this._scrollOffset - n);
+        this.markDirty();
     }
 
     scrollDown(n = 1): void {
@@ -59,6 +60,7 @@ export class LogView extends Widget {
             Math.max(0, this._lines.length - 1),
             this._scrollOffset + n,
         );
+        this.markDirty();
     }
 
     private _scrollToBottom(): void {
