@@ -56,8 +56,11 @@ export class LogView extends Widget {
     }
 
     scrollDown(n = 1): void {
+        const rect = this._getContentRect();
+        const visibleLines = Math.max(1, rect.height);
+        const maxScroll = Math.max(0, this._lines.length - visibleLines);
         this._scrollOffset = Math.min(
-            Math.max(0, this._lines.length - 1),
+            maxScroll,
             this._scrollOffset + n,
         );
         this.markDirty();

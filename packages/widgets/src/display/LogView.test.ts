@@ -136,4 +136,20 @@ describe('LogView', () => {
     expect(rows[0]).toContain('Line 2');
     expect(rows[1]).toContain('Line 3');
   });
+
+  it('scrollDown clamps to the last full page to prevent blank lines', () => {
+    const logView = new LogView({ width: 20, height: 2 }, { autoScroll: false });
+    logView.updateRect({ x: 0, y: 0, width: 20, height: 2 });
+    logView.setLines(['Line 1', 'Line 2', 'Line 3', 'Line 4']);
+
+    // Scroll down past maximum possible offset (4 lines, height 2 -> max offset is 2)
+    logView.scrollDown(10);
+
+    const screen = new Screen(20, 2);
+    logView.render(screen);
+    const rows = screen.back.map(row => row.map(cell => cell.char).join(''));
+    // With offset clamped to 2, it must still render Line 3 and Line 4 (not trailing blank lines)
+    expect(rows[0]).toContain('Line 3');
+    expect(rows[1]).toContain('Line 4');
+  });
 });
