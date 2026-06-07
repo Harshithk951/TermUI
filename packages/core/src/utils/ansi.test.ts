@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────
 
 import { describe, it, expect, vi } from 'vitest';
+import { EventEmitter } from 'node:events';
 import {
     CSI, OSC, ESC,
     hideCursor, showCursor, saveCursorPosition, restoreCursorPosition,
@@ -15,8 +16,18 @@ import {
     reset, bold, dim, italic, underline, blink, inverse, strikethrough,
     resetBold, resetDim, resetItalic, resetUnderline, resetBlink, resetInverse, resetStrikethrough,
     setScrollRegion, resetScrollRegion,
-    setTitle, writeClipboard
+    setTitle, writeClipboard, readClipboard
 } from './ansi.js';
+
+class MockStdin extends EventEmitter {
+    on(event: string, listener: (...args: any[]) => void): this {
+        return super.on(event, listener);
+    }
+
+    off(event: string, listener: (...args: any[]) => void): this {
+        return super.off(event, listener);
+    }
+}
 
 describe('ANSI Escape Constants', () => {
     it('should define core control prefixes', () => {
@@ -144,5 +155,28 @@ describe('ANSI Clipboard Functions', () => {
 
         expect(mockWrite).toHaveBeenCalledTimes(1);
         expect(mockWrite).toHaveBeenCalledWith(expectedSequence);
+    });
+
+    it('reads clipboard text from OSC 52 response', async () => {
+        const stdin = new MockStdin() as any;
+
+        let written = '';
+        const stdout = {
+            write(data: string) {
+                written += data;
+                return true;
+            },
+        } as any;
+
+        const promise = readClipboard(stdin, stdout);
+
+        expect(written).toBe('\x1b]52;c;?\x07');
+
+        stdin.emit(
+            'data',
+            Buffer.from('\x1b]52;c;aGVsbG8=\x07')
+        );
+
+        await expect(promise).resolves.toBe('hello');
     });
 });
