@@ -3,8 +3,19 @@
 // ─────────────────────────────────────────────────────
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createKeyEvent } from '@termuijs/core';
 import { createFiber, setCurrentFiber, clearCurrentFiber, setRequestRender } from '../hooks.js';
 import { useKeyboardNavigation } from './useKeyboardNavigation.js';
+
+function mockKeyEvent(key: string, shift = false) {
+    return createKeyEvent({
+        key,
+        raw: Buffer.alloc(0),
+        ctrl: false,
+        alt: false,
+        shift,
+    });
+}
 
 describe('useKeyboardNavigation', () => {
     let fiber = createFiber();
@@ -35,17 +46,17 @@ describe('useKeyboardNavigation', () => {
         let result = renderHook({ itemCount: 5 });
 
         // Simulate press down -> expect 1
-        fiber.onInput?.({ key: 'down' } as any);
+        fiber.onInput?.(mockKeyEvent('down'));
         result = renderHook({ itemCount: 5 });
         expect(result.selectedIndex).toBe(1);
 
         // Simulate press down again -> expect 2
-        fiber.onInput?.({ key: 'down' } as any);
+        fiber.onInput?.(mockKeyEvent('down'));
         result = renderHook({ itemCount: 5 });
         expect(result.selectedIndex).toBe(2);
 
         // Simulate press up -> expect 1
-        fiber.onInput?.({ key: 'up' } as any);
+        fiber.onInput?.(mockKeyEvent('up'));
         result = renderHook({ itemCount: 5 });
         expect(result.selectedIndex).toBe(1);
     });
@@ -54,12 +65,12 @@ describe('useKeyboardNavigation', () => {
         let result = renderHook({ itemCount: 10 });
 
         // End key -> expect 9
-        fiber.onInput?.({ key: 'end' } as any);
+        fiber.onInput?.(mockKeyEvent('end'));
         result = renderHook({ itemCount: 10 });
         expect(result.selectedIndex).toBe(9);
 
         // Home key -> expect 0
-        fiber.onInput?.({ key: 'home' } as any);
+        fiber.onInput?.(mockKeyEvent('home'));
         result = renderHook({ itemCount: 10 });
         expect(result.selectedIndex).toBe(0);
     });
@@ -68,17 +79,17 @@ describe('useKeyboardNavigation', () => {
         let result = renderHook({ itemCount: 25, pageSize: 5 });
 
         // PageDown -> expect 5
-        fiber.onInput?.({ key: 'pagedown' } as any);
+        fiber.onInput?.(mockKeyEvent('pagedown'));
         result = renderHook({ itemCount: 25, pageSize: 5 });
         expect(result.selectedIndex).toBe(5);
 
         // PageDown again -> expect 10
-        fiber.onInput?.({ key: 'pagedown' } as any);
+        fiber.onInput?.(mockKeyEvent('pagedown'));
         result = renderHook({ itemCount: 25, pageSize: 5 });
         expect(result.selectedIndex).toBe(10);
 
         // PageUp -> expect 5
-        fiber.onInput?.({ key: 'pageup' } as any);
+        fiber.onInput?.(mockKeyEvent('pageup'));
         result = renderHook({ itemCount: 25, pageSize: 5 });
         expect(result.selectedIndex).toBe(5);
     });
@@ -87,12 +98,12 @@ describe('useKeyboardNavigation', () => {
         let result = renderHook({ itemCount: 3, loop: true });
 
         // Up on index 0 wraps to 2
-        fiber.onInput?.({ key: 'up' } as any);
+        fiber.onInput?.(mockKeyEvent('up'));
         result = renderHook({ itemCount: 3, loop: true });
         expect(result.selectedIndex).toBe(2);
 
         // Down on index 2 wraps to 0
-        fiber.onInput?.({ key: 'down' } as any);
+        fiber.onInput?.(mockKeyEvent('down'));
         result = renderHook({ itemCount: 3, loop: true });
         expect(result.selectedIndex).toBe(0);
     });
@@ -101,17 +112,17 @@ describe('useKeyboardNavigation', () => {
         let result = renderHook({ itemCount: 3, loop: false });
 
         // Up on index 0 clamps to 0
-        fiber.onInput?.({ key: 'up' } as any);
+        fiber.onInput?.(mockKeyEvent('up'));
         result = renderHook({ itemCount: 3, loop: false });
         expect(result.selectedIndex).toBe(0);
 
         // Advance to last index
-        fiber.onInput?.({ key: 'end' } as any);
+        fiber.onInput?.(mockKeyEvent('end'));
         result = renderHook({ itemCount: 3, loop: false });
         expect(result.selectedIndex).toBe(2);
 
         // Down on index 2 clamps to 2
-        fiber.onInput?.({ key: 'down' } as any);
+        fiber.onInput?.(mockKeyEvent('down'));
         result = renderHook({ itemCount: 3, loop: false });
         expect(result.selectedIndex).toBe(2);
     });
@@ -121,24 +132,24 @@ describe('useKeyboardNavigation', () => {
         let result = renderHook({ itemCount: 5, onSelect });
 
         // Advance index to 3
-        fiber.onInput?.({ key: 'down' } as any);
-        fiber.onInput?.({ key: 'down' } as any);
-        fiber.onInput?.({ key: 'down' } as any);
+        fiber.onInput?.(mockKeyEvent('down'));
+        fiber.onInput?.(mockKeyEvent('down'));
+        fiber.onInput?.(mockKeyEvent('down'));
         result = renderHook({ itemCount: 5, onSelect });
 
         // Press enter -> expect onSelect to be called with 3
-        fiber.onInput?.({ key: 'enter' } as any);
+        fiber.onInput?.(mockKeyEvent('enter'));
         expect(onSelect).toHaveBeenCalledWith(3);
     });
 
     it('does nothing on key events when itemCount is 0', () => {
         let result = renderHook({ itemCount: 0 });
 
-        fiber.onInput?.({ key: 'down' } as any);
+        fiber.onInput?.(mockKeyEvent('down'));
         result = renderHook({ itemCount: 0 });
         expect(result.selectedIndex).toBe(0);
 
-        fiber.onInput?.({ key: 'end' } as any);
+        fiber.onInput?.(mockKeyEvent('end'));
         result = renderHook({ itemCount: 0 });
         expect(result.selectedIndex).toBe(0);
     });
