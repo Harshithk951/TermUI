@@ -3,9 +3,20 @@
 // ─────────────────────────────────────────────────────
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createKeyEvent } from '@termuijs/core';
 import { createFiber, setCurrentFiber, clearCurrentFiber, setRequestRender } from '../hooks.js';
 import { FocusContext } from '../focus-context.js';
 import { useFocusTrap } from './useFocusTrap.js';
+
+function mockKeyEvent(key: string, shift = false) {
+    return createKeyEvent({
+        key,
+        raw: Buffer.alloc(0),
+        ctrl: false,
+        alt: false,
+        shift,
+    });
+}
 
 describe('useFocusTrap', () => {
     let fiber = createFiber();
@@ -48,12 +59,12 @@ describe('useFocusTrap', () => {
 
         // Press tab -> expect focus to move to 'second'
         expect(fiber.onInput).toBeDefined();
-        fiber.onInput?.({ key: 'tab', shift: false } as any);
+        fiber.onInput?.(mockKeyEvent('tab'));
         expect(mockContextValue.focus).toHaveBeenCalledWith('second');
 
         // Update focused state and press tab again -> expect 'third'
         mockContextValue.focused = 'second';
-        fiber.onInput?.({ key: 'tab', shift: false } as any);
+        fiber.onInput?.(mockKeyEvent('tab'));
         expect(mockContextValue.focus).toHaveBeenLastCalledWith('third');
     });
 
@@ -65,7 +76,7 @@ describe('useFocusTrap', () => {
         mockContextValue.focused = 'second';
 
         // Press Shift+Tab -> expect focus to move to 'first'
-        fiber.onInput?.({ key: 'tab', shift: true } as any);
+        fiber.onInput?.(mockKeyEvent('tab', true));
         expect(mockContextValue.focus).toHaveBeenCalledWith('first');
     });
 
@@ -76,7 +87,7 @@ describe('useFocusTrap', () => {
         mockContextValue.focused = 'third';
 
         // Press Tab on last element -> expect first element 'first'
-        fiber.onInput?.({ key: 'tab', shift: false } as any);
+        fiber.onInput?.(mockKeyEvent('tab'));
         expect(mockContextValue.focus).toHaveBeenCalledWith('first');
     });
 
@@ -87,7 +98,7 @@ describe('useFocusTrap', () => {
         mockContextValue.focused = 'first';
 
         // Press Shift+Tab on first element -> expect last element 'third'
-        fiber.onInput?.({ key: 'tab', shift: true } as any);
+        fiber.onInput?.(mockKeyEvent('tab', true));
         expect(mockContextValue.focus).toHaveBeenCalledWith('third');
     });
 
@@ -98,7 +109,7 @@ describe('useFocusTrap', () => {
         // No element is focused
         mockContextValue.focused = null;
 
-        fiber.onInput?.({ key: 'tab', shift: false } as any);
+        fiber.onInput?.(mockKeyEvent('tab'));
         expect(mockContextValue.focus).toHaveBeenCalledWith('first');
     });
 
@@ -108,7 +119,7 @@ describe('useFocusTrap', () => {
 
         mockContextValue.focused = null;
 
-        fiber.onInput?.({ key: 'tab', shift: true } as any);
+        fiber.onInput?.(mockKeyEvent('tab', true));
         expect(mockContextValue.focus).toHaveBeenCalledWith('third');
     });
 
@@ -117,7 +128,7 @@ describe('useFocusTrap', () => {
 
         mockContextValue.focused = null;
 
-        fiber.onInput?.({ key: 'tab', shift: false } as any);
+        fiber.onInput?.(mockKeyEvent('tab'));
         expect(mockContextValue.focus).not.toHaveBeenCalled();
     });
 
@@ -127,8 +138,8 @@ describe('useFocusTrap', () => {
 
         mockContextValue.focused = 'first';
 
-        fiber.onInput?.({ key: 'up', shift: false } as any);
-        fiber.onInput?.({ key: 'enter', shift: false } as any);
+        fiber.onInput?.(mockKeyEvent('up'));
+        fiber.onInput?.(mockKeyEvent('enter'));
         expect(mockContextValue.focus).not.toHaveBeenCalled();
     });
 });
