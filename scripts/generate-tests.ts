@@ -1,10 +1,11 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, extname, basename, dirname } from 'node:path';
 
-const API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
 
-if (!API_KEY) {
-    console.error('Error: GEMINI_API_KEY environment variable is not set.');
+if (!GEMINI_KEY && !NVIDIA_KEY) {
+    console.error('Error: Neither GEMINI_API_KEY nor NVIDIA_API_KEY environment variable is set.');
     process.exit(1);
 }
 
@@ -35,7 +36,7 @@ Follow these rules strictly:
 7. Return ONLY the TypeScript code of the test file. Do NOT wrap it in markdown block tags (like \`\`\`typescript) or any introductory text.`;
 
 async function callGemini(prompt: string): Promise<string> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
     const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -72,6 +73,55 @@ async function callGemini(prompt: string): Promise<string> {
     return text.trim();
 }
 
+async function callNvidia(prompt: string): Promise<string> {
+    const model = process.env.NVIDIA_MODEL || 'nvidia/nemotron-4-340b-instruct';
+    const url = 'https://integrate.api.nvidia.com/v1/chat/completions';
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${NVIDIA_KEY}`,
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt,
+                },
+            ],
+            temperature: 0.2,
+            top_p: 0.7,
+            max_tokens: 4096,
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`NVIDIA API error: ${response.statusText} (${response.status})`);
+    }
+
+    const data: any = await response.json();
+    let text = data.choices?.[0]?.message?.content ?? '';
+
+    // Strip markdown code fences if model returned them
+    if (text.startsWith('```')) {
+        text = text.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '');
+    }
+
+    return text.trim();
+}
+
+async function callAI(prompt: string): Promise<string> {
+    if (NVIDIA_KEY) {
+        console.log('Routing request to NVIDIA API...');
+        return callNvidia(prompt);
+    } else {
+        console.log('Routing request to Google Gemini API...');
+        return callGemini(prompt);
+    }
+}
+
 async function main() {
     if (isFixMode) {
         const errorTraceIndex = args.indexOf('--fix') + 1;
@@ -104,7 +154,7 @@ ${errorTrace}
 
 Please update the test code to resolve the errors shown in the trace. Maintain coverage and keep changes minimal. Return ONLY the updated TypeScript code.`;
 
-        const fixedCode = await callGemini(prompt);
+        const fixedCode = await callAI(prompt);
         writeFileSync(testFile, fixedCode, 'utf8');
         console.log(`Successfully updated and saved fixes to ${testFile}`);
     } else {
@@ -119,7 +169,7 @@ ${sourceCode}
 
 Please write a robust, complete set of unit tests covering all functions, branches, and edge cases in the source code. Return ONLY the TypeScript code for the test file.`;
 
-        const testCode = await callGemini(prompt);
+        const testCode = await callAI(prompt);
         writeFileSync(testFile, testCode, 'utf8');
         console.log(`Successfully generated and saved tests to ${testFile}`);
     }

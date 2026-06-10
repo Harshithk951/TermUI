@@ -32,6 +32,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          NVIDIA_MODEL: ${{ secrets.NVIDIA_MODEL }}
         run: |
           TARGETS=$(bun run scripts/coverage-scanner.ts)
           FILE1=$(echo "$TARGETS" | jq -r '.[0].relativePath')
@@ -96,7 +98,7 @@ jobs:
               else
                 echo "Validation failed: $BUILD_ERR"
                 if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-                  echo "Attempting to auto-fix using Gemini..."
+                  echo "Attempting to auto-fix using AI..."
                   bun run scripts/generate-tests.ts "$FILE" --fix "$BUILD_ERR"
                 fi
               fi
