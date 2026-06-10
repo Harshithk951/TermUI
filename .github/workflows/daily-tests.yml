@@ -1,0 +1,120 @@
+name: Daily Test Automation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Git Configuration
+        run: |
+          git config --global user.name "Harshithk951"
+          git config --global user.email "harshithk951@users.noreply.github.com"
+          git remote add upstream https://github.com/Karanjot786/TermUI.git || true
+
+      - name: Run Test Scanner & Process Issues
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          TARGETS=$(bun run scripts/coverage-scanner.ts)
+          FILE1=$(echo "$TARGETS" | jq -r '.[0].relativePath')
+          FILE2=$(echo "$TARGETS" | jq -r '.[1].relativePath')
+          PKG1=$(echo "$TARGETS" | jq -r '.[0].packageName')
+          PKG2=$(echo "$TARGETS" | jq -r '.[1].packageName')
+
+          echo "Target 1: $FILE1 ($PKG1)"
+          echo "Target 2: $FILE2 ($PKG2)"
+
+          for FILE in "$FILE1" "$FILE2"; do
+            if [ "$FILE" = "null" ] || [ -z "$FILE" ]; then
+              continue
+            fi
+
+            # Extract name and directory info
+            DIR=$(dirname "$FILE")
+            EXT="${FILE##*.}"
+            NAME=$(basename "$FILE" ".$EXT")
+            TEST_FILE="$DIR/$NAME.test.$EXT"
+            BRANCH_NAME="test/auto-$(echo "$NAME" | tr '[:upper:]' '[:lower:]')"
+
+            echo "=== Processing $FILE ==="
+
+            # 1. Open Issue on Upstream
+            ISSUE_TITLE="[bug] Unit Tests for $NAME in $FILE"
+            ISSUE_BODY="The module $FILE lacks unit test coverage. Please write comprehensive unit tests to ensure high code quality."
+            
+            # Create the issue on upstream repository
+            ISSUE_URL=$(gh issue create --repo Karanjot786/TermUI --title "$ISSUE_TITLE" --body "$ISSUE_BODY")
+            ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
+            echo "Created Issue #$ISSUE_NUMBER on upstream: $ISSUE_URL"
+
+            # 2. Add GSSoC assignment comment
+            gh issue comment "$ISSUE_NUMBER" --repo Karanjot786/TermUI --body "Please assign this issue to me for GSSoC 2026."
+
+            # 3. Create branch and implement tests
+            git checkout main
+            git pull upstream main
+            git checkout -b "$BRANCH_NAME"
+
+            # Run Gemini test generator
+            bun run scripts/generate-tests.ts "$FILE"
+
+            # 4. Verify (Build, Typecheck, Test) with auto-fix loop
+            MAX_ATTEMPTS=3
+            ATTEMPT=1
+            SUCCESS=false
+
+            while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+              echo "Validation attempt $ATTEMPT..."
+              
+              # Run build, typecheck and vitest on the specific package/test
+              BUILD_ERR=""
+              bun run build || BUILD_ERR="Build failed"
+              bun run typecheck || BUILD_ERR="$BUILD_ERR Typecheck failed"
+              bun vitest run "$TEST_FILE" || BUILD_ERR="$BUILD_ERR Vitest run failed"
+
+              if [ -z "$BUILD_ERR" ]; then
+                SUCCESS=true
+                break
+              else
+                echo "Validation failed: $BUILD_ERR"
+                if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                  echo "Attempting to auto-fix using Gemini..."
+                  bun run scripts/generate-tests.ts "$FILE" --fix "$BUILD_ERR"
+                fi
+              fi
+              ATTEMPT=$((ATTEMPT + 1))
+            done
+
+            if [ "$SUCCESS" = "true" ]; then
+              echo "Validation succeeded! Committing and pushing..."
+              git add "$TEST_FILE"
+              git commit -m "test: add unit tests for $NAME"
+              git push origin "$BRANCH_NAME" --force
+
+              # 5. Open PR on Upstream
+              PR_TITLE="test: add unit tests for $NAME"
+              PR_BODY="## Description\n\nThis PR adds comprehensive unit test coverage for the \`$NAME\` module.\n\n## Related Issue\n\nCloses #$ISSUE_NUMBER\n\n## Checklist\n- [x] Tests pass locally\n- [x] Build passes\n- [x] Typecheck passes"
+              
+              gh pr create --repo Karanjot786/TermUI --title "$PR_TITLE" --body "$PR_BODY" --head "Harshithk951:$BRANCH_NAME" --base main
+            else
+              echo "Failed to generate valid test suite for $FILE after $MAX_ATTEMPTS attempts."
+            fi
+          done
