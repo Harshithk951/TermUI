@@ -58,9 +58,45 @@ jobs:
 
             echo "=== Processing $FILE ==="
 
+            if [ "$FILE" = "$FILE1" ]; then
+              PKG="$PKG1"
+            else
+              PKG="$PKG2"
+            fi
+
             # 1. Open Issue on Upstream
             ISSUE_TITLE="[bug] Unit Tests for $NAME in $FILE"
-            ISSUE_BODY="The module $FILE lacks unit test coverage. Please write comprehensive unit tests to ensure high code quality."
+            ISSUE_BODY=$(cat <<EOF
+<!-- Search existing issues first. Run on the latest version. -->
+
+## Which package?
+
+$PKG
+
+## What happened?
+
+The module \`$NAME\` in \`$FILE\` has 0% or low unit test coverage. Tests are needed to ensure high code quality, validation of functionality, and type checks.
+
+## Proposed solution/Task
+
+Create a unit test file for \`$NAME\` under the same package src directory. It should cover:
+- Core functions and edge cases of the module.
+- Normal and boundary parameters.
+- Standard test validations.
+
+## Environment
+
+- Bun version: 1.3.14
+- OS: Linux (GitHub Runner)
+- Terminal emulator: -
+- TermUI version: v0.1.x
+
+## GSSoC contributor?
+
+- [x] Yes. You contribute under GSSoC 2026.
+- [ ] No.
+EOF
+)
             
             # Create the issue on upstream repository
             ISSUE_URL=$(gh issue create --repo Karanjot786/TermUI --title "$ISSUE_TITLE" --body "$ISSUE_BODY")
@@ -114,7 +150,58 @@ jobs:
 
               # 5. Open PR on Upstream
               PR_TITLE="test: add unit tests for $NAME"
-              PR_BODY="## Description\n\nThis PR adds comprehensive unit test coverage for the \`$NAME\` module.\n\n## Related Issue\n\nCloses #$ISSUE_NUMBER\n\n## Checklist\n- [x] Tests pass locally\n- [x] Build passes\n- [x] Typecheck passes"
+              PR_BODY=$(cat <<EOF
+## Description
+
+This PR adds comprehensive unit test coverage for the \`$NAME\` module under package \`$PKG\`.
+
+## Related Issue
+
+Closes #$ISSUE_NUMBER
+
+## Which package(s)?
+
+$PKG
+
+## Type of Change
+
+- [ ] 🐛 Bug fix (\`type:bug\`)
+- [ ] ✨ Feature (\`type:feature\`)
+- [ ] 📝 Docs (\`type:docs\`)
+- [x] 🧪 Tests (\`type:testing\`)
+- [ ] ♻️ Refactor (\`type:refactor\`)
+- [ ] 🎨 Design / UX (\`type:design\`)
+- [ ] ♿ Accessibility (\`type:accessibility\`)
+- [ ] ⚡ Performance (\`type:performance\`)
+- [ ] 🔧 DevOps / CI (\`type:devops\`)
+- [ ] 🔒 Security (\`type:security\`)
+
+## Checklist
+
+- [x] ⭐ You starred the repo. The \`needs-star\` check blocks your merge otherwise.
+- [x] Tests pass locally: \`bun vitest run\`
+- [x] Build passes: \`bun run build\`
+- [x] Typecheck passes: \`bun run typecheck\`
+- [x] You read [\`CONTRIBUTING.md\`](./CONTRIBUTING.md).
+- [x] Your PR title follows \`type: short description\`.
+- [x] Widget state mutators call \`markDirty()\` (if your change affects rendering).
+- [x] No new \`any\` types without an inline comment explaining why.
+- [x] No unrelated refactors bundled into this PR.
+
+## GSSoC 2026 Participation
+
+- [x] You are a GSSoC 2026 contributor.
+- Your GSSoC profile: \`https://gssoc.girlscript.org/profile/Harshithk951\`
+
+## Screenshots / Recordings (UI changes)
+
+N/A
+
+## Notes for the Reviewer
+
+None
+EOF
+)
               
               gh pr create --repo Karanjot786/TermUI --title "$PR_TITLE" --body "$PR_BODY" --head "Harshithk951:$BRANCH_NAME" --base main
             else
