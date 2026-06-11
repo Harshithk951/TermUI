@@ -77,8 +77,9 @@ async function callGemini(prompt: string): Promise<string> {
 async function callNvidia(prompt: string): Promise<string> {
     const models = [
         process.env.NVIDIA_MODEL,
-        'nvidia/nemotron-3-ultra-550b-a55b',
-        'meta/llama-3.1-70b-instruct'
+        'meta/llama-3.1-8b-instruct',
+        'meta/llama-3.1-70b-instruct',
+        'nvidia/nemotron-3-ultra-550b-a55b'
     ].filter(Boolean) as string[];
 
     let lastError: any = null;
