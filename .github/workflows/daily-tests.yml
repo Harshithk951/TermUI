@@ -66,40 +66,10 @@ jobs:
 
             # 1. Open Issue on Upstream
             ISSUE_TITLE="[bug] Unit Tests for $NAME in $FILE"
-            ISSUE_BODY=$(cat <<EOF
-<!-- Search existing issues first. Run on the latest version. -->
-
-## Which package?
-
-$PKG
-
-## What happened?
-
-The module \`$NAME\` in \`$FILE\` has 0% or low unit test coverage. Tests are needed to ensure high code quality, validation of functionality, and type checks.
-
-## Proposed solution/Task
-
-Create a unit test file for \`$NAME\` under the same package src directory. It should cover:
-- Core functions and edge cases of the module.
-- Normal and boundary parameters.
-- Standard test validations.
-
-## Environment
-
-- Bun version: 1.3.14
-- OS: Linux (GitHub Runner)
-- Terminal emulator: -
-- TermUI version: v0.1.x
-
-## GSSoC contributor?
-
-- [x] Yes. You contribute under GSSoC 2026.
-- [ ] No.
-EOF
-)
+            bun run scripts/prepare-templates.ts issue "$PKG" "$NAME" "$FILE" "/tmp/issue_body.md"
             
             # Create the issue on upstream repository
-            ISSUE_URL=$(gh issue create --repo Karanjot786/TermUI --title "$ISSUE_TITLE" --body "$ISSUE_BODY")
+            ISSUE_URL=$(gh issue create --repo Karanjot786/TermUI --title "$ISSUE_TITLE" --body-file "/tmp/issue_body.md")
             ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
             echo "Created Issue #$ISSUE_NUMBER on upstream: $ISSUE_URL"
 
@@ -150,60 +120,9 @@ EOF
 
               # 5. Open PR on Upstream
               PR_TITLE="test: add unit tests for $NAME"
-              PR_BODY=$(cat <<EOF
-## Description
-
-This PR adds comprehensive unit test coverage for the \`$NAME\` module under package \`$PKG\`.
-
-## Related Issue
-
-Closes #$ISSUE_NUMBER
-
-## Which package(s)?
-
-$PKG
-
-## Type of Change
-
-- [ ] 🐛 Bug fix (\`type:bug\`)
-- [ ] ✨ Feature (\`type:feature\`)
-- [ ] 📝 Docs (\`type:docs\`)
-- [x] 🧪 Tests (\`type:testing\`)
-- [ ] ♻️ Refactor (\`type:refactor\`)
-- [ ] 🎨 Design / UX (\`type:design\`)
-- [ ] ♿ Accessibility (\`type:accessibility\`)
-- [ ] ⚡ Performance (\`type:performance\`)
-- [ ] 🔧 DevOps / CI (\`type:devops\`)
-- [ ] 🔒 Security (\`type:security\`)
-
-## Checklist
-
-- [x] ⭐ You starred the repo. The \`needs-star\` check blocks your merge otherwise.
-- [x] Tests pass locally: \`bun vitest run\`
-- [x] Build passes: \`bun run build\`
-- [x] Typecheck passes: \`bun run typecheck\`
-- [x] You read [\`CONTRIBUTING.md\`](./CONTRIBUTING.md).
-- [x] Your PR title follows \`type: short description\`.
-- [x] Widget state mutators call \`markDirty()\` (if your change affects rendering).
-- [x] No new \`any\` types without an inline comment explaining why.
-- [x] No unrelated refactors bundled into this PR.
-
-## GSSoC 2026 Participation
-
-- [x] You are a GSSoC 2026 contributor.
-- Your GSSoC profile: \`https://gssoc.girlscript.org/profile/Harshithk951\`
-
-## Screenshots / Recordings (UI changes)
-
-N/A
-
-## Notes for the Reviewer
-
-None
-EOF
-)
+              bun run scripts/prepare-templates.ts pr "$PKG" "$NAME" "$ISSUE_NUMBER" "/tmp/pr_body.md"
               
-              gh pr create --repo Karanjot786/TermUI --title "$PR_TITLE" --body "$PR_BODY" --head "Harshithk951:$BRANCH_NAME" --base main
+              gh pr create --repo Karanjot786/TermUI --title "$PR_TITLE" --body-file "/tmp/pr_body.md" --head "Harshithk951:$BRANCH_NAME" --base main
             else
               echo "Failed to generate valid test suite for $FILE after $MAX_ATTEMPTS attempts."
             fi
