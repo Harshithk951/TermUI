@@ -39,6 +39,7 @@ async function callGemini(prompt: string): Promise<string> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
     const response = await fetch(url, {
         method: 'POST',
+        signal: AbortSignal.timeout(45000),
         headers: {
             'Content-Type': 'application/json',
         },
@@ -89,6 +90,7 @@ async function callNvidia(prompt: string): Promise<string> {
                 const url = 'https://integrate.api.nvidia.com/v1/chat/completions';
                 const response = await fetch(url, {
                     method: 'POST',
+                    signal: AbortSignal.timeout(45000),
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${NVIDIA_KEY}`,
