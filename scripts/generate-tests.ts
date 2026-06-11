@@ -74,48 +74,77 @@ async function callGemini(prompt: string): Promise<string> {
 }
 
 async function callNvidia(prompt: string): Promise<string> {
-    const model = process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
-    const url = 'https://integrate.api.nvidia.com/v1/chat/completions';
+    const models = [
+        process.env.NVIDIA_MODEL,
+        'nvidia/nemotron-3-ultra-550b-a55b',
+        'meta/llama-3.1-70b-instruct'
+    ].filter(Boolean) as string[];
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${NVIDIA_KEY}`,
-        },
-        body: JSON.stringify({
-            model: model,
-            messages: [
-                {
-                    role: 'user',
-                    content: prompt,
-                },
-            ],
-            temperature: 0.2,
-            top_p: 0.7,
-            max_tokens: 4096,
-        }),
-    });
+    let lastError: any = null;
 
-    if (!response.ok) {
-        throw new Error(`NVIDIA API error: ${response.statusText} (${response.status})`);
+    for (const model of models) {
+        console.log(`Attempting NVIDIA API with model: ${model}...`);
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+                const url = 'https://integrate.api.nvidia.com/v1/chat/completions';
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${NVIDIA_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [
+                            {
+                                role: 'user',
+                                content: prompt,
+                            },
+                        ],
+                        temperature: 0.2,
+                        top_p: 0.7,
+                        max_tokens: 4096,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`NVIDIA API error: ${response.statusText} (${response.status})`);
+                }
+
+                const data: any = await response.json();
+                let text = data.choices?.[0]?.message?.content ?? '';
+
+                if (text.startsWith('```')) {
+                    text = text.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '');
+                }
+
+                return text.trim();
+            } catch (err: any) {
+                lastError = err;
+                console.error(`NVIDIA API attempt ${attempt} with model ${model} failed: ${err.message || err}`);
+                if (attempt < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+            }
+        }
     }
 
-    const data: any = await response.json();
-    let text = data.choices?.[0]?.message?.content ?? '';
-
-    // Strip markdown code fences if model returned them
-    if (text.startsWith('```')) {
-        text = text.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '');
-    }
-
-    return text.trim();
+    throw lastError || new Error('NVIDIA API calls failed.');
 }
 
 async function callAI(prompt: string): Promise<string> {
     if (NVIDIA_KEY) {
-        console.log('Routing request to NVIDIA API...');
-        return callNvidia(prompt);
+        try {
+            console.log('Routing request to NVIDIA API...');
+            return await callNvidia(prompt);
+        } catch (err: any) {
+            console.error(`NVIDIA API failed completely: ${err.message || err}`);
+            if (GEMINI_KEY) {
+                console.log('Falling back to Google Gemini API...');
+                return await callGemini(prompt);
+            }
+            throw err;
+        }
     } else {
         console.log('Routing request to Google Gemini API...');
         return callGemini(prompt);
