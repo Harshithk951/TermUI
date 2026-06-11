@@ -71,9 +71,8 @@ jobs:
             gh issue comment "$ISSUE_NUMBER" --repo Karanjot786/TermUI --body "Please assign this issue to me for GSSoC 2026."
 
             # 3. Create branch and implement tests
-            git checkout main
-            git pull upstream main
-            git checkout -b "$BRANCH_NAME"
+            git fetch upstream main
+            git checkout -b "$BRANCH_NAME" upstream/main
 
             # Run Gemini test generator
             bun run scripts/generate-tests.ts "$FILE"
