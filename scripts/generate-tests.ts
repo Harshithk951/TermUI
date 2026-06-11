@@ -74,7 +74,7 @@ async function callGemini(prompt: string): Promise<string> {
 }
 
 async function callNvidia(prompt: string): Promise<string> {
-    const model = process.env.NVIDIA_MODEL || 'nvidia/nemotron-4-340b-instruct';
+    const model = process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
     const url = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
     const response = await fetch(url, {
