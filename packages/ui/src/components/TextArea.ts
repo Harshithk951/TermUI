@@ -1,4 +1,5 @@
-import { createElement } from '@termuijs/jsx';
+import { createElement, useState, useInput } from '@termuijs/jsx';
+import type { KeyEvent } from '@termuijs/core';
 
 export interface TextAreaProps {
     value?: string;
@@ -99,7 +100,7 @@ export function TextArea({ value = '', onChange, width, height }: TextAreaProps)
     // Let's use nested text elements! `text` can have children.
     
     return createElement(
-        'text',
+        'box',
         {
             width,
             height,
