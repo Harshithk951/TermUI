@@ -39,6 +39,15 @@ describe('quick layout helpers', () => {
             expect((r as Box).style.height).toBe(5);
             expect((r as Box).style.flexGrow).toBe(0);
         });
+
+        it('preserves explicit flexGrow on children', () => {
+            const child1 = new Box();
+            const child2 = new Box({ flexGrow: 2 });
+            row(child1, child2);
+
+            expect(child1.style.flexGrow).toBe(1);
+            expect(child2.style.flexGrow).toBe(2); // Preserves explicit flexGrow
+        });
     });
 
     describe('col', () => {
@@ -56,11 +65,13 @@ describe('quick layout helpers', () => {
             expect(g).toBeInstanceOf(Box);
             expect((g as Box).style.flexDirection).toBe('column');
             
-            const rows = (g as any)._children;
+            const rows = g.children;
             expect(rows).toHaveLength(2);
+            expect(rows[0]).toBeInstanceOf(Box);
             expect(rows[0].style.flexDirection).toBe('row');
-            expect(rows[0]._children).toHaveLength(3);
-            expect(rows[1]._children).toHaveLength(1);
+            expect((rows[0] as Box).children).toHaveLength(3);
+            expect(rows[1]).toBeInstanceOf(Box);
+            expect((rows[1] as Box).children).toHaveLength(1);
         });
     });
 
